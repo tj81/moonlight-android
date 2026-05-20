@@ -1,3 +1,27 @@
+# READ FIRST - About this fork
+
+This is a modified version of Moonlight for Android.
+It adds an optional accessibility service that simulates screen input to keep the display at max refresh rate.
+
+This is useful for devices that cannot force the highest refresh rate via system settings.
+
+Some devices (like the Huawei Mate XT global EMUI) have this option, but it is broken and doesn't do anything.
+
+[Download latest version](https://github.com/tj81/moonlight-android/releases)
+
+The accessibility service is implemented very passively and there is no additional battery drain while Moonlight is not active.
+
+## HowTo
+
+The accessibility service must be activated in Android settings.
+
+## Possible drawbacks
+
+Screen input like gestures not targetting Moonlight might be unreliable from time to time.
+This happens when Moonlight fails to stop its periodic touch inputs fast enough.
+
+Please note that some other apps behave slightly different when an accessibility service is active (like browsers no longer hiding their title bar).
+
 # Moonlight Android
 
 [![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/232a8tadrrn8jv0k/branch/master?svg=true)](https://ci.appveyor.com/project/cgutman/moonlight-android/branch/master)
