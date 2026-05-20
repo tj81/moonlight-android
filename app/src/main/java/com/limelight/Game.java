@@ -511,6 +511,7 @@ public class Game extends Activity implements SurfaceHolder.Callback,
                     this);
             virtualController.refreshLayout();
             virtualController.show();
+            MyAccessibilityService.setHasVirtualController(true);
         }
 
         if (prefConfig.usbDriver) {
@@ -593,6 +594,7 @@ public class Game extends Activity implements SurfaceHolder.Callback,
 
                 if (virtualController != null) {
                     virtualController.hide();
+                    MyAccessibilityService.setHasVirtualController(false);
                 }
 
                 performanceOverlayView.setVisibility(View.GONE);
@@ -611,6 +613,7 @@ public class Game extends Activity implements SurfaceHolder.Callback,
 
                 if (virtualController != null) {
                     virtualController.show();
+                    MyAccessibilityService.setHasVirtualController(true);
                 }
 
                 if (prefConfig.enablePerfOverlay) {
@@ -1055,6 +1058,8 @@ public class Game extends Activity implements SurfaceHolder.Callback,
 
     @Override
     protected void onPause() {
+        MyAccessibilityService.setIsPaused(true);
+
         if (isFinishing()) {
             // Stop any further input device notifications before we lose focus (and pointer capture)
             if (controllerHandler != null) {
@@ -1069,6 +1074,13 @@ public class Game extends Activity implements SurfaceHolder.Callback,
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+
+        MyAccessibilityService.setIsPaused(false);
+    }
+
+    @Override
     protected void onStop() {
         super.onStop();
 
@@ -1077,6 +1089,7 @@ public class Game extends Activity implements SurfaceHolder.Callback,
 
         if (virtualController != null) {
             virtualController.hide();
+            MyAccessibilityService.setHasVirtualController(false);
         }
 
         if (conn != null) {
@@ -2031,39 +2044,48 @@ public class Game extends Activity implements SurfaceHolder.Callback,
                 {
                 case MotionEvent.ACTION_POINTER_DOWN:
                 case MotionEvent.ACTION_DOWN:
-                    for (TouchContext touchContext : touchContextMap) {
-                        touchContext.setPointerCount(event.getPointerCount());
+                    if (MyAccessibilityService.allowTouchDown(eventX, eventY)) {
+                        for (TouchContext touchContext : touchContextMap) {
+                            touchContext.setPointerCount(event.getPointerCount());
+                        }
+                        context.touchDownEvent(eventX, eventY, event.getEventTime(), true);
+                        MyAccessibilityService.setIsTouchDown(true);
                     }
-                    context.touchDownEvent(eventX, eventY, event.getEventTime(), true);
                     break;
                 case MotionEvent.ACTION_POINTER_UP:
                 case MotionEvent.ACTION_UP:
-                    if (event.getPointerCount() == 1 &&
-                            (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || (event.getFlags() & MotionEvent.FLAG_CANCELED) == 0)) {
-                        // All fingers up
-                        if (event.getEventTime() - threeFingerDownTime < THREE_FINGER_TAP_THRESHOLD) {
-                            // This is a 3 finger tap to bring up the keyboard
-                            toggleKeyboard();
-                            return true;
+                    if (MyAccessibilityService.allowTouchUp(eventX, eventY)) {
+                        if (event.getPointerCount() == 1) {
+                            MyAccessibilityService.setIsTouchDown(false);
                         }
-                    }
 
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && (event.getFlags() & MotionEvent.FLAG_CANCELED) != 0) {
-                        context.cancelTouch();
-                    }
-                    else {
-                        context.touchUpEvent(eventX, eventY, event.getEventTime());
-                    }
+                        if (event.getPointerCount() == 1 &&
+                                (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || (event.getFlags() & MotionEvent.FLAG_CANCELED) == 0)) {
+                            // All fingers up
+                            if (event.getEventTime() - threeFingerDownTime < THREE_FINGER_TAP_THRESHOLD) {
+                                // This is a 3 finger tap to bring up the keyboard
+                                toggleKeyboard();
+                                return true;
+                            }
+                        }
 
-                    for (TouchContext touchContext : touchContextMap) {
-                        touchContext.setPointerCount(event.getPointerCount() - 1);
-                    }
-                    if (actionIndex == 0 && event.getPointerCount() > 1 && !context.isCancelled()) {
-                        // The original secondary touch now becomes primary
-                        context.touchDownEvent(
-                                (int)(event.getX(1) + xOffset),
-                                (int)(event.getY(1) + yOffset),
-                                event.getEventTime(), false);
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && (event.getFlags() & MotionEvent.FLAG_CANCELED) != 0) {
+                            context.cancelTouch();
+                        }
+                        else {
+                            context.touchUpEvent(eventX, eventY, event.getEventTime());
+                        }
+
+                        for (TouchContext touchContext : touchContextMap) {
+                            touchContext.setPointerCount(event.getPointerCount() - 1);
+                        }
+                        if (actionIndex == 0 && event.getPointerCount() > 1 && !context.isCancelled()) {
+                            // The original secondary touch now becomes primary
+                            context.touchDownEvent(
+                                    (int)(event.getX(1) + xOffset),
+                                    (int)(event.getY(1) + yOffset),
+                                    event.getEventTime(), false);
+                        }
                     }
                     break;
                 case MotionEvent.ACTION_MOVE:
@@ -2095,6 +2117,13 @@ public class Game extends Activity implements SurfaceHolder.Callback,
                     }
                     break;
                 case MotionEvent.ACTION_CANCEL:
+                    // TODO: Untested
+                    if (MyAccessibilityService.allowTouchUp(eventX, eventY)) {
+                        if (event.getPointerCount() == 1) {
+                            MyAccessibilityService.setIsTouchDown(false);
+                        }
+                    }
+
                     for (TouchContext aTouchContext : touchContextMap) {
                         aTouchContext.cancelTouch();
                         aTouchContext.setPointerCount(0);

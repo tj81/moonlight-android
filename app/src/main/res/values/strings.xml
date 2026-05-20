@@ -300,4 +300,7 @@
     <string name="analogscroll_none">None (both sticks move the mouse)</string>
     <string name="analogscroll_right">Right analog stick</string>
     <string name="analogscroll_left">Left analog stick</string>
+
+    <string name="accessibility_service_label">Moonlight with touch-sim</string>
+    <string name="accessibility_service_description">Keeps screen active via repeated 0,0 touches.</string>
 </resources>
